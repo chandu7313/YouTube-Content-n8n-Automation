@@ -1,4 +1,4 @@
-# 🚀 YouTube AI Automation
+# 🚀 YouTube Content Automation
 
 An **AI-powered YouTube automation workflow** built with **n8n** that automatically discovers trending software engineering topics, researches them, generates high-quality educational videos, and publishes them to YouTube.
 
