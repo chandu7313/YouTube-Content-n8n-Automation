@@ -1,309 +1,219 @@
-# 🚀 AI Content Factory
+# 🚀 YouTube AI Automation
 
-> An AI-powered Content Automation Platform built using **n8n**, **Local AI (Ollama)**, and **Open Source Tools** to automatically discover trending software engineering topics, generate educational videos, and publish them to YouTube.
+An **AI-powered YouTube automation workflow** built with **n8n** that automatically discovers trending software engineering topics, researches them, generates high-quality educational videos, and publishes them to YouTube.
+
+The goal is to automate the complete content creation pipeline while maintaining quality through automated validation and feedback loops.
 
 ---
 
-## 📌 Overview
+## 📖 Documentation
 
-AI Content Factory is an automated pipeline that continuously discovers trending topics from developer communities, researches them, generates high-quality educational scripts, converts them into narrated videos, and publishes them to YouTube with minimal human intervention.
-
-The project focuses on creating original technical content related to:
-
-- 💻 Full Stack Development
-- ☁️ DevOps
-- 🤖 Artificial Intelligence
-- 🐳 Docker & Kubernetes
-- ⚙️ System Design
-- 🔥 GitHub Trending Projects
-- 📰 Software Engineering News
-- 🚀 Developer Productivity
+- **Architecture:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
+- **Printable Documentation:** [`docs/YouTube-AI-Automation-Architecture.pdf`](docs/YouTube-AI-Automation-Architecture.pdf)
 
 ---
 
 # ✨ Features
 
-- Automatic Topic Discovery
-- Multi-source Content Research
-- AI Fact Verification
-- Technical Script Generation
-- AI Voice Generation
-- Thumbnail Generation
-- Image/B-Roll Generation
-- Automatic Video Rendering
-- YouTube Upload Automation
-- SEO Optimization
-- Analytics Collection
-- Duplicate Detection
-- Error Recovery Workflow
+- 🔍 Automatic topic discovery
+- 📈 AI-powered topic ranking
+- 📚 Technical research
+- ✍️ Script generation
+- 🎙️ AI voice generation
+- 🖼️ Image & screenshot generation
+- 💬 Caption generation
+- 🎬 Automatic video rendering
+- ✅ Video quality validation
+- 📺 YouTube upload automation
+- 🔄 Intelligent feedback loops
 
 ---
 
-# 🏗️ High Level Workflow
+# 🔄 Workflow Overview
 
-```
-
-Trending Sources
-↓
-Research
-↓
-Fact Verification
-↓
-Script Generation
-↓
-Voice Generation
-↓
-Image Generation
-↓
-Video Rendering
-↓
+```text
+Schedule Trigger
+        │
+        ▼
+Collect Trending Topics
+        │
+        ▼
+Merge & Remove Duplicates
+        │
+        ▼
+AI Topic Ranking
+        │
+        ▼
 Quality Check
-↓
-SEO Optimization
-↓
-YouTube Upload
-↓
-Analytics
-↓
-Feedback Loop
-
+   ├── No → Find another topic
+   └── Yes
+        │
+        ▼
+Research Topic
+        │
+        ▼
+Generate Script
+        │
+        ▼
+Generate SEO
+(Title • Description • Tags)
+        │
+        ▼
+Generate Thumbnail Prompt
+        │
+        ▼
+Generate Voice
+        │
+        ▼
+Generate Images
+        │
+        ▼
+Generate Captions
+        │
+        ▼
+Render Video
+        │
+        ▼
+Video Quality Check
+   ├── Fail → Regenerate Script
+   └── Pass
+        │
+        ▼
+Upload to YouTube
+        │
+        ▼
+Store Metadata
+        │
+        ▼
+Notification
 ```
 
 ---
 
-# 📚 Content Sources
+# 🚀 How It Works
+
+### 1. Discover Trending Topics
+
+The workflow gathers content from multiple free sources, including:
 
 - GitHub Trending
 - Dev.to
 - Hashnode
 - Reddit
 - Hacker News
+- RSS Feeds
 - Official Documentation
-- Docker Blog
-- Kubernetes Blog
-- Node.js Blog
-- React Blog
-- AWS Blog
-- Cloudflare Blog
-- Microsoft Learn
-- Google Developers
-- Linux Foundation
-- NPM Trending
-- PyPI
+
+Topics are merged, deduplicated, and ranked based on relevance.
 
 ---
 
-# 🛠️ Technology Stack
+### 2. Research
 
-## Automation
+Once a topic is selected, the workflow collects information from trusted sources such as:
 
-- n8n
+- Official documentation
+- GitHub repositories
+- Technical blogs
+- Community discussions
 
-## AI
-
-- Ollama
-- Qwen
-- Gemma
-- Llama
-- DeepSeek
-
-## Voice
-
-- Piper TTS
-
-## Speech Recognition
-
-- Whisper.cpp
-
-## Image Generation
-
-- Pollinations AI
-- Stable Diffusion
-
-## Video
-
-- FFmpeg
-
-## Database
-
-- PostgreSQL
-
-## Cache
-
-- Redis
-
-## Object Storage
-
-- MinIO
-
-## Monitoring
-
-- Prometheus
-- Grafana
-- Loki
-
-## Deployment
-
-- Docker
-- Docker Compose
+The collected information is organized into a structured research document.
 
 ---
 
-# 📂 Project Structure
+### 3. Content Generation
 
-```
+Using the research data, the workflow automatically generates:
 
-AI-Content-Factory/
-
-├── README.md
-├── docs/
-├── workflows/
-├── prompts/
-├── backend/
-├── frontend/
-├── docker/
-├── assets/
-├── database/
-└── scripts/
-
-```
+- Video Script
+- YouTube Title
+- Description
+- Tags
+- Thumbnail Prompt
 
 ---
 
-# ⚙️ Planned Workflows
+### 4. Media Generation
 
-## WF-01 — Topic Discovery
+The workflow creates:
 
-- Collect trending topics
-- Remove duplicates
-- Rank relevance
-
----
-
-## WF-02 — Research
-
-- Gather technical information
-- Extract code examples
-- Collect references
-
----
-
-## WF-03 — Fact Verification
-
-- Verify claims
-- Cross-check sources
-- Confidence scoring
-
----
-
-## WF-04 — Script Generation
-
-- Generate outline
-- Create educational script
-- Optimize for audience retention
-
----
-
-## WF-05 — Asset Generation
-
-- Voice generation
-- Thumbnail generation
-- Image generation
+- AI Voiceover
+- Images / Screenshots
 - Captions
+- Final Video
 
 ---
 
-## WF-06 — Video Rendering
+### 5. Quality Validation
 
-- Assemble media
-- Render video
-- Perform QA checks
+Before publishing, the workflow verifies:
 
----
+- Script quality
+- Video completeness
+- Rendering success
 
-## WF-07 — Publishing
-
-- Upload to YouTube
-- Schedule publishing
-- Generate metadata
+If validation fails, the workflow automatically returns to the content generation stage and regenerates the required assets.
 
 ---
 
-## WF-08 — Analytics
+### 6. Publishing
 
-- Collect performance metrics
-- Track engagement
+After successful validation, the workflow:
 
----
-
-## WF-09 — Feedback
-
-- Improve topic scoring
-- Learn from analytics
+- Uploads the video to YouTube
+- Stores video metadata
+- Sends a completion notification
 
 ---
 
-## WF-10 — Error Recovery
+# 🔄 Feedback Loops
 
-- Retry failed tasks
-- Log errors
-- Notify administrator
+### 📌 Topic Validation
 
----
+If a topic does not meet the required quality threshold, it is discarded and a new topic is selected automatically.
 
-# 📈 Future Roadmap
+### 📌 Video Validation
 
-- [ ] Build Topic Discovery Workflow
-- [ ] Build Research Agent
-- [ ] Integrate Ollama
-- [ ] Script Generator
-- [ ] Voice Generation
-- [ ] Thumbnail Generator
-- [ ] FFmpeg Renderer
-- [ ] YouTube Upload
-- [ ] LinkedIn Publishing
-- [ ] X (Twitter) Publishing
-- [ ] Telegram Publishing
-- [ ] AI Analytics Dashboard
-- [ ] Multi-language Support
-- [ ] AI Avatar Videos
-- [ ] Blog Generation
-- [ ] Newsletter Generation
+If the rendered video fails validation, the workflow regenerates the script and media before attempting another render.
 
 ---
 
-# 📖 Documentation
+# 🛠 Requirements
 
-Project documentation can be found in the **docs/** directory.
-
-- Architecture Blueprint
-- Flowcharts
-- Database Design
-- System Design
-- Deployment Guide
-
----
-
-# 🎯 Goal
-
-Build a production-ready AI Content Factory capable of automatically generating and publishing high-quality educational software engineering videos using free and open-source technologies.
+- n8n (Cloud or Self-hosted)
+- AI Model (OpenAI, Ollama, Claude, etc.)
+- Text-to-Speech Service
+- Image Generation Service
+- FFmpeg
+- YouTube Data API (OAuth2)
 
 ---
 
-# 🤝 Contributing
+# 📁 Repository Structure
 
-Contributions, suggestions, and improvements are welcome.
-
-Feel free to fork the repository and open a Pull Request.
+```text
+YouTube-AI-Automation/
+│
+├── README.md
+├── ARCHITECTURE.md
+└── docs/
+    └── YouTube-AI-Automation-Architecture.pdf
+```
 
 ---
 
-# 📄 License
+# 🚀 Getting Started
 
-This project is licensed under the MIT License.
+1. Read **ARCHITECTURE.md** to understand the complete workflow.
+2. Build the workflow in **n8n** or import your own workflow JSON.
+3. Configure the required credentials for external services.
+4. Test the workflow manually.
+5. Enable the schedule trigger for full automation.
 
 ---
 
-# ⭐ Support
+# 📌 Project Status
 
-If you find this project useful, consider giving it a ⭐ on GitHub.
+> 🚧 **Work in Progress**
+
+The architecture and workflow design are complete. Implementation is currently in progress.
