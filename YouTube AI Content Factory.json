@@ -1,0 +1,357 @@
+{
+  "name": "YouTube AI Content Factory",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "1a1e6f1a-0001-4a11-8a11-000000000001",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1600, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://dev.to/api/articles",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "top", "value": "1" },
+            { "name": "per_page", "value": "10" },
+            { "name": "tag", "value": "webdev" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1a1e6f1a-0002-4a11-8a11-000000000002",
+      "name": "Fetch Trending Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1360, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pick the top article as this run's topic and shape a clean object\nconst items = $input.all();\nconst article = items[0].json[0];\n\nreturn [{\n  json: {\n    topic_title: article.title,\n    topic_description: article.description || '',\n    source_url: article.url,\n    tags: article.tag_list || []\n  }\n}];"
+      },
+      "id": "1a1e6f1a-0003-4a11-8a11-000000000003",
+      "name": "Pick Topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.LLM_BASE_URL}}/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{$env.LLM_API_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{$env.LLM_MODEL}}\",\n  \"messages\": [\n    {\"role\": \"system\", \"content\": \"You are a scriptwriter for a software engineering YouTube channel. Write a spoken-word video script, 400-500 words, split into scenes. Mark each scene as [SCENE: short visual description]. Keep facts accurate and cite nothing you are not given.\"},\n    {\"role\": \"user\", \"content\": \"Write a script about: {{$json.topic_title}} — {{$json.topic_description}}\"}\n  ]\n}",
+        "options": {}
+      },
+      "id": "1a1e6f1a-0004-4a11-8a11-000000000004",
+      "name": "Generate Script (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 300],
+      "notes": "LLM_BASE_URL can point to https://api.openai.com or a self-hosted Ollama OpenAI-compatible endpoint, e.g. http://localhost:11434"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract script text and split into individual scenes for image/voice generation\nconst raw = $input.first().json.choices[0].message.content;\n\nconst sceneRegex = /\\[SCENE:(.*?)\\]/g;\nconst scenes = [];\nlet match;\nwhile ((match = sceneRegex.exec(raw)) !== null) {\n  scenes.push(match[1].trim());\n}\n\nconst narration = raw.replace(/\\[SCENE:.*?\\]/g, '').replace(/\\n{2,}/g, '\\n').trim();\n\nreturn [{\n  json: {\n    full_script: raw,\n    narration_text: narration,\n    scenes: scenes.length ? scenes : ['software engineering concept, clean tech illustration']\n  }\n}];"
+      },
+      "id": "1a1e6f1a-0005-4a11-8a11-000000000005",
+      "name": "Parse Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-640, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/{{$env.ELEVENLABS_VOICE_ID}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "xi-api-key", "value": "={{$env.ELEVENLABS_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": {{JSON.stringify($json.narration_text)}},\n  \"model_id\": \"eleven_multilingual_v2\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "1a1e6f1a-0006-4a11-8a11-000000000006",
+      "name": "Generate Voiceover (TTS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, 200],
+      "notes": "Swap for any TTS API (ElevenLabs, Google TTS, Azure). Returns binary audio (MP3)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan out: one item per scene, carrying the shared narration/audio reference along\nconst scenes = $('Parse Script').first().json.scenes;\nreturn scenes.map((scene, i) => ({ json: { scene_index: i, scene_prompt: scene } }));"
+      },
+      "id": "1a1e6f1a-0007-4a11-8a11-000000000007",
+      "name": "Split Scenes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 420]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://image.pollinations.ai/prompt/{{encodeURIComponent($json.scene_prompt + ', clean tech illustration, high detail')}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "1a1e6f1a-0008-4a11-8a11-000000000008",
+      "name": "Generate Scene Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 420],
+      "notes": "Pollinations.ai is free, no API key required."
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "1a1e6f1a-0009-4a11-8a11-000000000009",
+      "name": "Collect Images",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [80, 420]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "1a1e6f1a-0010-4a11-8a11-000000000010",
+      "name": "Merge Audio + Images",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.CREATOMATE_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template_id\": \"{{$env.CREATOMATE_TEMPLATE_ID}}\",\n  \"modifications\": {\n    \"Audio-1.source\": \"{{$binary.data.fileUrl}}\",\n    \"Text-1.text\": \"{{$('Pick Topic').first().json.topic_title}}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "1a1e6f1a-0011-4a11-8a11-000000000011",
+      "name": "Assemble Video (Creatomate)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [580, 300],
+      "notes": "Any hosted video-assembly API works here (Creatomate, Shotstack, JSON2Video). This node starts a render job."
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "1a1e6f1a-0012-4a11-8a11-000000000012",
+      "name": "Wait for Render",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{$('Assemble Video (Creatomate)').first().json.id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.CREATOMATE_API_KEY}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1a1e6f1a-0013-4a11-8a11-000000000013",
+      "name": "Check Render Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{$json.status}}",
+              "rightValue": "succeeded",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1a1e6f1a-0014-4a11-8a11-000000000014",
+      "name": "Render Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$json.url}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "1a1e6f1a-0015-4a11-8a11-000000000015",
+      "name": "Download Final Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 220]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{$('Pick Topic').first().json.topic_title}}",
+        "regionCode": "US",
+        "categoryId": "28",
+        "options": {
+          "description": "={{$('Parse Script').first().json.narration_text.slice(0, 280)}}\n\nSource: {{$('Pick Topic').first().json.source_url}}",
+          "tags": "={{$('Pick Topic').first().json.tags.join(',')}}",
+          "privacyStatus": "public"
+        },
+        "binaryPropertyName": "data"
+      },
+      "id": "1a1e6f1a-0016-4a11-8a11-000000000016",
+      "name": "Upload to YouTube",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [1780, 220],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 60,
+        "unit": "seconds"
+      },
+      "id": "1a1e6f1a-0017-4a11-8a11-000000000017",
+      "name": "Wait & Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1540, 400]
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [[{ "node": "Fetch Trending Topics", "type": "main", "index": 0 }]]
+    },
+    "Fetch Trending Topics": {
+      "main": [[{ "node": "Pick Topic", "type": "main", "index": 0 }]]
+    },
+    "Pick Topic": {
+      "main": [[{ "node": "Generate Script (LLM)", "type": "main", "index": 0 }]]
+    },
+    "Generate Script (LLM)": {
+      "main": [[{ "node": "Parse Script", "type": "main", "index": 0 }]]
+    },
+    "Parse Script": {
+      "main": [
+        [
+          { "node": "Generate Voiceover (TTS)", "type": "main", "index": 0 },
+          { "node": "Split Scenes", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Generate Voiceover (TTS)": {
+      "main": [[{ "node": "Merge Audio + Images", "type": "main", "index": 0 }]]
+    },
+    "Split Scenes": {
+      "main": [[{ "node": "Generate Scene Image", "type": "main", "index": 0 }]]
+    },
+    "Generate Scene Image": {
+      "main": [[{ "node": "Collect Images", "type": "main", "index": 0 }]]
+    },
+    "Collect Images": {
+      "main": [[{ "node": "Merge Audio + Images", "type": "main", "index": 1 }]]
+    },
+    "Merge Audio + Images": {
+      "main": [[{ "node": "Assemble Video (Creatomate)", "type": "main", "index": 0 }]]
+    },
+    "Assemble Video (Creatomate)": {
+      "main": [[{ "node": "Wait for Render", "type": "main", "index": 0 }]]
+    },
+    "Wait for Render": {
+      "main": [[{ "node": "Check Render Status", "type": "main", "index": 0 }]]
+    },
+    "Check Render Status": {
+      "main": [[{ "node": "Render Complete?", "type": "main", "index": 0 }]]
+    },
+    "Render Complete?": {
+      "main": [
+        [{ "node": "Download Final Video", "type": "main", "index": 0 }],
+        [{ "node": "Wait & Retry", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait & Retry": {
+      "main": [[{ "node": "Check Render Status", "type": "main", "index": 0 }]]
+    },
+    "Download Final Video": {
+      "main": [[{ "node": "Upload to YouTube", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
