@@ -55,7 +55,7 @@ flowchart TD
     THUMBPROMPT --> VOICE[Generate Voice]
     VOICE --> IMAGES[Generate Images / Screenshots]
     IMAGES --> CAPTIONS[Generate Captions]
-    CAPTIONS --> RENDER[Create Video using FFmpeg]
+    CAPTIONS --> RENDER[Create Video using JSON2VIDEO]
     RENDER --> QCHECK[Quality Check]
     QCHECK --> VIDEOOK{Video OK?}
 
